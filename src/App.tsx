@@ -9,23 +9,56 @@ interface Joke {
 
 export function App() {
   const [data, setData] = useState<Joke>();
-  // Url til at lave et fetch på
-  const url = "https://official-joke-api.appspot.com/random_joke";
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>();
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
-  // UseEffect hook der kun kører når komponentet mounter
+  async function fetchJoke(category?: string) {
+    const url = category ? `https://official-joke-api.appspot.com/jokes/${category}/random` : "https://official-joke-api.appspot.com/random_joke";
+
+    const res = await fetch(url);
+    const jokeData = await res.json();
+    // API returns array for category, single object for random
+    setData(Array.isArray(jokeData) ? jokeData[0] : jokeData);
+  }
+
+  // Fetch random joke on mount
   useEffect(() => {
-    // Fetch funktion der kun kører én gang inde i useEffect
-    async function doFetchOnMount() {
-      const res = await fetch(url);
-      const data = await res.json();
-      setData(data);
-    }
-    doFetchOnMount();
+    fetchJoke();
   }, []);
 
+  useEffect(() => {
+    async function fetchCategories() {
+      const res = await fetch("https://official-joke-api.appspot.com/types");
+      const types = await res.json();
+      setCategories(types);
+    }
+    fetchCategories();
+  }, []);
+
+  // Add this useEffect to update body class
+  useEffect(() => {
+    document.body.classList.remove("light", "dark");
+    document.body.classList.add(isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
+
   return (
-    <div>
+    <div className={isDarkMode ? "dark" : "light"}>
       <h1>Random Joke</h1>
+
+      {/* Theme toggle */}
+      <button onClick={() => setIsDarkMode(!isDarkMode)}>{isDarkMode ? "☀️" : "🌙"} Toggle Theme</button>
+
+      {/* Category selector */}
+      <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+        <option value="">All Categories</option>
+        {categories.map((cat) => (
+          <option key={cat} value={cat}>
+            {cat}
+          </option>
+        ))}
+      </select>
+
       {data && (
         <div>
           <p>
@@ -34,7 +67,7 @@ export function App() {
           <p>
             <strong>Punchline:</strong> {data.punchline}
           </p>
-          <button onClick={() => window.location.reload()}>Get New Joke</button>
+          <button onClick={() => fetchJoke(selectedCategory)}>Get New Joke</button>
         </div>
       )}
     </div>
